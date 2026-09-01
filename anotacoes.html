@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anotações</title>
+<style>
+  :root {
+    --paper: #FBF9F4;
+    --ink: #2B2A28;
+    --ink-soft: #6B6862;
+    --rule: #D8D3C8;
+    --accent: #8A5A3B;
+    --accent-soft: #E9DCCB;
+    --done: #7A8B6F;
+    --link: #4A6B8A;
+    --link-bg: #E4EBF0;
+    --font-body: Georgia, 'Iowan Old Style', serif;
+    --pad: 16px;
+    --gap: 22px;
+  }
+  body.dark {
+    --paper: #201E1B;
+    --ink: #EDE9E2;
+    --ink-soft: #A39D92;
+    --rule: #453F38;
+    --accent-soft: #4A3A2A;
+    --link-bg: #2A3742;
+  }
+  body.compact { --pad: 10px; --gap: 12px; }
+  * { box-sizing: border-box; }
+  html, body { max-width: 100%; overflow-x: hidden; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    padding: var(--pad) var(--pad) 100px;
+    transition: background 0.2s, color 0.2s;
+  }
+  .app-shell {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  #notesView {
+    background-image: repeating-linear-gradient(
+      to bottom, var(--paper), var(--paper) 33px, var(--rule) 34px
+    );
+    background-attachment: local;
+  }
+  .page-title { font-size: 20px; font-weight: 700; margin: 0 0 10px 2px; color: var(--accent); }
+  .tabs {
+    display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 14px; border-bottom: 1.5px solid var(--rule);
+  }
+  .tab-btn {
+    border: none; background: none; font-family: var(--font-body); font-size: 14px; padding: 8px 14px;
+    cursor: pointer; color: var(--ink-soft); border-bottom: 2.5px solid transparent; margin-bottom: -1.5px;
+  }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 700; }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .suggestions {
+    background: var(--link-bg); border-radius: 8px; padding: 12px 14px; margin-bottom: var(--gap);
+  }
+  .suggestions-title { font-size: 13px; font-weight: 700; color: var(--link); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .suggestion-item { font-size: 13.5px; color: var(--ink); padding: 3px 0; line-height: 1.4; }
+  .suggestion-empty { font-size: 13px; color: var(--ink-soft); font-style: italic; }
+
+  .search-row { display: flex; gap: 8px; align-items: center; }
+  .search-input {
+    flex: 1; padding: 9px 12px; border: 1.5px solid var(--rule); border-radius: 6px;
+    background: rgba(255,255,255,0.06); background-color: color-mix(in srgb, var(--paper) 70%, white 30%);
+    font-family: var(--font-body); font-size: 14px; color: var(--ink); outline: none;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .clear-search { border: none; background: none; color: var(--ink-soft); font-size: 13px; cursor: pointer; display: none; }
+  .explore-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chip {
+    padding: 4px 10px; border-radius: 12px; background: var(--link-bg); color: var(--link);
+    font-size: 12.5px; cursor: pointer; border: 1px solid transparent; font-family: var(--font-body);
+  }
+  .chip.active { background: var(--link); color: white; }
+  .filter-banner {
+    display: none; align-items: center; gap: 8px; background: var(--accent-soft);
+    padding: 8px 12px; border-radius: 6px; margin-bottom: 14px; font-size: 13.5px; color: var(--ink);
+  }
+  .filter-banner button { border: none; background: none; color: var(--accent); cursor: pointer; font-weight: 700; font-size: 13px; }
+  .hint { font-size: 11.5px; color: var(--ink-soft); margin: 8px 2px 12px; }
+
+  .section-wrap { margin-bottom: var(--gap); }
+  .section-date { font-size: 11px; color: var(--ink-soft); margin: 0 0 4px 4px; }
+  .section {
+    border: 1.5px solid var(--ink); border-radius: 2px; padding: 12px 14px 14px;
+    background: rgba(255,255,255,0.03);
+  }
+  .section.hidden { display: none; }
+  .section-header { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .collapse-btn {
+    border: none; background: none; color: var(--ink-soft); font-size: 13px; cursor: pointer;
+    padding: 2px 4px; flex-shrink: 0; width: 18px;
+  }
+  .section-title {
+    flex: 1; font-size: 16.5px; font-weight: 700; border: none; background: transparent;
+    color: var(--ink); outline: none; font-family: var(--font-body); min-width: 0;
+  }
+  .section-title::placeholder { color: var(--ink-soft); }
+  .del-section { border: none; background: none; color: var(--ink-soft); font-size: 15px; cursor: pointer; padding: 2px 6px; }
+  .del-section:hover { color: var(--accent); }
+  .section-body.collapsed { display: none; }
+
+  .item-row {
+    display: flex; align-items: flex-start; gap: 6px; padding: 4px 0;
+    border-radius: 4px;
+  }
+  .item-row.item-hidden { display: none; }
+  .item-row.dragging { opacity: 0.35; }
+  .item-row.drag-over { border-top: 2px solid var(--accent); }
+  .drag-handle {
+    cursor: grab; color: var(--ink-soft); font-size: 13px; padding: 4px 2px; flex-shrink: 0; user-select: none;
+  }
+  .move-btns { display: flex; flex-direction: column; flex-shrink: 0; }
+  .move-btns button {
+    border: none; background: none; color: var(--ink-soft); font-size: 9px; cursor: pointer; padding: 0 2px; line-height: 1.1;
+  }
+  .item-row input[type="checkbox"] { margin-top: 4px; width: 16px; height: 16px; accent-color: var(--done); flex-shrink: 0; }
+  .item-text-wrap { flex: 1; position: relative; min-width: 0; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+  .item-text {
+    flex: 1; min-width: 60px; border: none; background: transparent; font-size: 15px; outline: none;
+    color: var(--ink); font-family: var(--font-body); padding: 2px 0;
+  }
+  .item-text::placeholder { color: var(--ink-soft); }
+  .item-display { font-size: 15px; padding: 2px 0; line-height: 1.4; cursor: text; flex: 1; min-width: 60px; }
+  .item-date { font-size: 10.5px; color: var(--ink-soft); white-space: nowrap; flex-shrink: 0; }
+  .item-row.checked .item-text, .item-row.checked .item-display { text-decoration: line-through; color: var(--ink-soft); }
+  .link-tag { background: var(--link-bg); color: var(--link); padding: 1px 6px; border-radius: 4px; cursor: pointer; font-size: 13.5px; }
+  .link-tag:hover { background: var(--link); color: white; }
+  .item-row .del-item { border: none; background: none; color: var(--ink-soft); cursor: pointer; font-size: 14px; opacity: 0; padding: 2px 4px; flex-shrink: 0; }
+  .item-row:hover .del-item { opacity: 1; }
+  .add-item { border: none; background: none; color: var(--accent); font-size: 14px; cursor: pointer; margin-top: 6px; padding: 2px 0; }
+  .add-section-btn {
+    display: block; width: 100%; padding: 12px; border: 1.5px dashed var(--ink-soft); border-radius: 2px;
+    background: none; color: var(--ink-soft); font-size: 15px; font-family: var(--font-body); cursor: pointer; margin-bottom: 20px;
+  }
+  .add-section-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .status { font-size: 11px; color: var(--ink-soft); text-align: right; min-height: 14px; }
+
+  .cards-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 22px; }
+  .stat-card {
+    flex: 1; min-width: 90px; border: 1.5px solid var(--rule); border-radius: 8px;
+    padding: 12px; text-align: center; background: rgba(255,255,255,0.03);
+  }
+  .stat-num { font-size: 24px; font-weight: 700; color: var(--accent); }
+  .stat-label { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
+  .chart-block { margin-bottom: 28px; }
+  .chart-title { font-size: 14.5px; font-weight: 700; margin-bottom: 10px; color: var(--ink); }
+  .hbar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 3px; border-radius: 6px; }
+  .hbar-row.clickable { cursor: pointer; }
+  .hbar-row.clickable:hover { background: var(--link-bg); }
+  .stale-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 6px; cursor: pointer; margin-bottom: 6px; background: rgba(255,255,255,0.03); border: 1px solid var(--rule); }
+  .stale-row:hover { background: var(--accent-soft); }
+  .stale-title { font-size: 13.5px; color: var(--ink); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .stale-badge { font-size: 11.5px; color: white; background: var(--accent); padding: 2px 8px; border-radius: 10px; flex-shrink: 0; }
+  .insight-box { background: var(--link-bg); border-radius: 8px; padding: 14px; margin-bottom: 18px; }
+  .insight-title { font-size: 13px; font-weight: 700; color: var(--link); margin-bottom: 8px; }
+  .insight-item { font-size: 13.5px; color: var(--ink); padding: 3px 0; line-height: 1.45; }
+  .copilot-btn {
+    border: 1.5px solid var(--link); background: none; color: var(--link); padding: 8px 14px;
+    border-radius: 6px; cursor: pointer; font-size: 13px; font-family: var(--font-body); margin-top: 8px;
+  }
+  .copilot-btn:hover { background: var(--link); color: white; }
+
+  .archive-btn { border: none; background: none; color: var(--ink-soft); font-size: 13px; cursor: pointer; padding: 2px 4px; }
+  .archive-btn:hover { color: var(--accent); }
+  .archived-card {
+    border: 1.5px solid var(--rule); border-radius: 6px; padding: 10px 14px; margin-bottom: 10px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; background: rgba(255,255,255,0.03);
+  }
+  .archived-info { flex: 1; min-width: 0; }
+  .archived-title { font-size: 14.5px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .archived-meta { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
+  .archived-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .archived-actions button {
+    border: 1px solid var(--rule); background: var(--paper); color: var(--ink); padding: 5px 10px;
+    border-radius: 5px; cursor: pointer; font-size: 12.5px; font-family: var(--font-body);
+  }
+  .archived-actions button.danger { color: #B5533C; border-color: #B5533C; }
+
+  .snapshot-card {
+    border: 1.5px solid var(--rule); border-radius: 6px; padding: 10px 14px; margin-bottom: 8px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .snapshot-info { flex: 1; min-width: 0; font-size: 13.5px; color: var(--ink); }
+  .snapshot-meta { font-size: 11px; color: var(--ink-soft); }
+  .snapshot-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .snapshot-actions button {
+    border: 1px solid var(--rule); background: var(--paper); color: var(--ink); padding: 5px 10px;
+    border-radius: 5px; cursor: pointer; font-size: 12.5px; font-family: var(--font-body);
+  }
+  .snapshot-actions button.danger { color: #B5533C; border-color: #B5533C; }
+
+  .swatches { display: flex; gap: 6px; }
+  .swatch { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
+  .swatch.active { border-color: var(--ink); }
+
+  body.fs-small #notesView .section-title { font-size: 15px; }
+  body.fs-small #notesView .item-text, body.fs-small #notesView .item-display { font-size: 13.5px; }
+  body.fs-large #notesView .section-title { font-size: 18.5px; }
+  body.fs-large #notesView .item-text, body.fs-large #notesView .item-display { font-size: 17px; }
+  #notesView.no-lines { background-image: none; }
+  .hbar-label { width: 100px; font-size: 12.5px; color: var(--ink-soft); flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hbar-track { flex: 1; height: 16px; background: var(--rule); border-radius: 4px; overflow: hidden; display: flex; }
+  .hbar-done { background: var(--done); height: 100%; }
+  .hbar-pending { background: var(--accent-soft); height: 100%; }
+  .hbar-pct { width: 36px; font-size: 12px; color: var(--ink-soft); text-align: right; flex-shrink: 0; }
+  .vbars { display: flex; align-items: flex-end; gap: 8px; height: 120px; padding: 0 4px; }
+  .vbar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+  .vbar-stack { width: 100%; max-width: 26px; display: flex; flex-direction: column-reverse; border-radius: 3px 3px 0 0; overflow: hidden; }
+  .vbar-created { background: var(--accent-soft); width: 100%; }
+  .vbar-completed { background: var(--done); width: 100%; }
+  .vbar-day { font-size: 10px; color: var(--ink-soft); margin-top: 6px; }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--ink-soft); margin-bottom: 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .empty-note { font-size: 13px; color: var(--ink-soft); font-style: italic; }
+
+  .history-day { margin-bottom: 20px; }
+  .history-date { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--rule); }
+  .history-event { display: flex; gap: 8px; align-items: baseline; font-size: 14px; padding: 4px 0; }
+  .history-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; }
+  .history-dot.created { background: var(--link); }
+  .history-dot.completed { background: var(--done); }
+  .history-text { flex: 1; }
+  .history-time { font-size: 11px; color: var(--ink-soft); }
+  .history-section-tag { font-size: 11px; color: var(--ink-soft); }
+
+  .about-block { margin-bottom: 24px; }
+  .about-title { font-size: 15px; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+  .about-text { font-size: 14px; line-height: 1.6; color: var(--ink); }
+  .about-text b { color: var(--ink); }
+  .about-text code { background: var(--link-bg); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  .backup-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+  .backup-btn {
+    border: 1.5px solid var(--accent); background: var(--accent); color: white; padding: 9px 16px;
+    border-radius: 6px; cursor: pointer; font-size: 14px; font-family: var(--font-body);
+  }
+  .backup-btn.secondary { background: none; color: var(--accent); }
+  .storage-note { font-size: 12.5px; color: var(--ink-soft); margin-top: 8px; line-height: 1.5; }
+
+  .settings-grid { display: flex; flex-direction: column; gap: 14px; }
+  .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .settings-row label { font-size: 14px; color: var(--ink); }
+  .settings-row input[type="color"] { width: 40px; height: 30px; border: none; background: none; cursor: pointer; }
+  .settings-row select, .settings-row .toggle-group { font-family: var(--font-body); }
+  .toggle-group { display: flex; border: 1.5px solid var(--rule); border-radius: 6px; overflow: hidden; }
+  .toggle-group button {
+    border: none; background: var(--paper); color: var(--ink-soft); padding: 6px 12px; font-size: 13px; cursor: pointer; font-family: var(--font-body);
+  }
+  .toggle-group button.active { background: var(--accent); color: white; }
+
+  .pomo-fab {
+    position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px; border-radius: 50%;
+    background: var(--accent); color: white; border: none; font-size: 22px; cursor: pointer;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.25); z-index: 30; display: flex; align-items: center; justify-content: center;
+  }
+  .pomo-panel {
+    position: fixed; bottom: 86px; right: 20px; width: 210px; background: var(--paper);
+    border: 1.5px solid var(--ink); border-radius: 10px; padding: 16px; box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    z-index: 30; display: none; text-align: center;
+  }
+  .pomo-panel.open { display: block; }
+  .pomo-mode { font-size: 12px; letter-spacing: 0.5px; color: var(--ink-soft); margin-bottom: 4px; }
+  .pomo-time { font-size: 36px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; margin-bottom: 10px; }
+  .pomo-controls { display: flex; gap: 6px; justify-content: center; margin-bottom: 10px; }
+  .pomo-controls button {
+    border: 1px solid var(--rule); background: var(--paper); color: var(--ink); padding: 6px 12px;
+    border-radius: 6px; cursor: pointer; font-size: 13px; font-family: var(--font-body);
+  }
+  .pomo-controls button.primary { background: var(--accent); color: white; border-color: var(--accent); }
+  .pomo-settings { display: flex; gap: 8px; justify-content: center; font-size: 12px; color: var(--ink-soft); margin-bottom: 8px; }
+  .pomo-settings input { width: 34px; text-align: center; border: 1px solid var(--rule); border-radius: 4px; padding: 2px; font-family: var(--font-body); background: var(--paper); color: var(--ink); }
+  .pomo-count { font-size: 12px; color: var(--ink-soft); }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+<div class="page-title">📓 Anotações</div>
+<div class="tabs">
+  <button class="tab-btn active" data-tab="notesView" onclick="switchTab('notesView')">Notas</button>
+  <button class="tab-btn" data-tab="chartsView" onclick="switchTab('chartsView')">Gráficos</button>
+  <button class="tab-btn" data-tab="historyView" onclick="switchTab('historyView')">Histórico</button>
+  <button class="tab-btn" data-tab="archiveView" onclick="switchTab('archiveView')">Arquivo</button>
+  <button class="tab-btn" data-tab="aboutView" onclick="switchTab('aboutView')">Sobre</button>
+</div>
+
+<div id="notesView" class="view active">
+  <div class="suggestions" id="suggestionsBox"></div>
+
+  <div class="search-row">
+    <input class="search-input" id="searchInput" placeholder="Buscar em tudo..." oninput="onSearch()">
+    <button class="clear-search" id="clearSearch" onclick="clearSearch()">limpar</button>
+  </div>
+  <div class="explore-bar" id="exploreBar"></div>
+  <div class="hint">Dica: escreva [[Nome]] ou #tag num item para linkar. Arraste ⠿ para reordenar itens.</div>
+
+  <div class="filter-banner" id="filterBanner">
+    <span id="filterLabel"></span>
+    <button onclick="clearFilter()">✕ voltar para tudo</button>
+  </div>
+
+  <div id="sections"></div>
+  <button class="add-section-btn" onclick="addSection()">+ Novo assunto</button>
+  <div class="status" id="status"></div>
+</div>
+
+<div id="chartsView" class="view">
+  <div class="cards-row" id="statCards"></div>
+  <div class="chart-block">
+    <div class="chart-title">Progresso por assunto <span style="font-weight:400;font-size:11.5px;color:var(--ink-soft)">(toque para abrir)</span></div>
+    <div id="hbars"></div>
+  </div>
+  <div class="chart-block">
+    <div class="chart-title">Assuntos parados <span style="font-weight:400;font-size:11.5px;color:var(--ink-soft)">(sem progresso, mais antigos primeiro)</span></div>
+    <div id="staleList"></div>
+  </div>
+  <div class="chart-block">
+    <div class="chart-title">Mais mencionados em pendências <span style="font-weight:400;font-size:11.5px;color:var(--ink-soft)">(toque para filtrar)</span></div>
+    <div id="mentionsChart"></div>
+  </div>
+  <div class="chart-block">
+    <div class="chart-title">Atividade — últimos 7 dias</div>
+    <div class="legend">
+      <span><i style="background:var(--accent-soft)"></i>criados</span>
+      <span><i style="background:var(--done)"></i>concluídos</span>
+    </div>
+    <div class="vbars" id="activityChart"></div>
+  </div>
+  <div class="chart-block">
+    <div class="chart-title">Ciclos de foco (Pomodoro) — últimos 7 dias</div>
+    <div class="vbars" id="pomoChart"></div>
+  </div>
+</div>
+
+<div id="historyView" class="view">
+  <div class="insight-box" id="insightBox"></div>
+  <div id="historyList"></div>
+</div>
+
+<div id="archiveView" class="view">
+  <div class="hint" style="margin:0 0 14px">Assuntos arquivados saem da aba Notas mas continuam contando no Histórico. Você pode desarquivar quando quiser.</div>
+  <div id="archiveList"></div>
+</div>
+
+<div id="aboutView" class="view">
+  <div class="about-block">
+    <div class="about-title">Sobre este app</div>
+    <div class="about-text">
+      Caderno digital para reuniões e pendências: simples como o Keep, com a inteligência
+      de conectar assuntos e pessoas do Notion/Logseq, mais Pomodoro embutido.
+    </div>
+  </div>
+
+  <div class="about-block">
+    <div class="about-title">Como usar</div>
+    <div class="about-text">
+      • <b>Assuntos/itens:</b> "+ Novo assunto" cria uma caixa; "+ item" adiciona linhas.<br>
+      • <b>Links:</b> <code>[[Nome]]</code> ou <code>#tag</code> num item linka pessoas/temas — clique para ver tudo relacionado, em qualquer assunto.<br>
+      • <b>Buscar:</b> filtra tudo em tempo real.<br>
+      • <b>Recolher:</b> seta ▸ ao lado do título esconde os itens.<br>
+      • <b>Reordenar:</b> arraste pelo ⠿ (ou use ▲▼ no celular).<br>
+      • <b>Sugestões:</b> a aba Notas analisa pendências sozinha e recomenda ações.<br>
+      • <b>Gráficos:</b> progresso, assuntos parados, menções e atividade — clicáveis.<br>
+      • <b>Histórico:</b> linha do tempo com resumo inteligente e exportação para o Copilot.<br>
+      • <b>Pomodoro:</b> botão 🍅 flutuante, ciclos configuráveis.
+    </div>
+  </div>
+
+  <div class="about-block">
+    <div class="about-title">Personalização</div>
+    <div class="settings-grid">
+      <div class="settings-row">
+        <label>Nome do app</label>
+        <input type="text" id="appNameInput" value="Anotações" maxlength="24" oninput="updateAppName(this.value)"
+          style="border:1.5px solid var(--rule);border-radius:6px;padding:6px 10px;font-family:var(--font-body);background:var(--paper);color:var(--ink);width:130px;">
+      </div>
+      <div class="settings-row">
+        <label>Ícone</label>
+        <div class="toggle-group" id="iconPicker">
+          <button data-icon="📓" onclick="setIcon('📓')" class="active">📓</button>
+          <button data-icon="📝" onclick="setIcon('📝')">📝</button>
+          <button data-icon="🗂️" onclick="setIcon('🗂️')">🗂️</button>
+          <button data-icon="🛠️" onclick="setIcon('🛠️')">🛠️</button>
+          <button data-icon="📋" onclick="setIcon('📋')">📋</button>
+        </div>
+      </div>
+      <div class="settings-row">
+        <label>Cor de destaque</label>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="swatches" id="swatchesRow"></div>
+          <input type="color" id="accentPicker" value="#8A5A3B" onchange="updateAccent(this.value)">
+        </div>
+      </div>
+      <div class="settings-row">
+        <label>Fonte</label>
+        <div class="toggle-group">
+          <button id="fontSerifBtn" class="active" onclick="setFont('serif')">Clássica</button>
+          <button id="fontSansBtn" onclick="setFont('sans')">Moderna</button>
+        </div>
+      </div>
+      <div class="settings-row">
+        <label>Tamanho do texto</label>
+        <div class="toggle-group">
+          <button id="fsSmallBtn" onclick="setFontSize('small')">P</button>
+          <button id="fsMediumBtn" class="active" onclick="setFontSize('medium')">M</button>
+          <button id="fsLargeBtn" onclick="setFontSize('large')">G</button>
+        </div>
+      </div>
+      <div class="settings-row">
+        <label>Modo</label>
+        <div class="toggle-group">
+          <button id="themeLightBtn" class="active" onclick="setTheme('light')">Claro</button>
+          <button id="themeDarkBtn" onclick="setTheme('dark')">Escuro</button>
+        </div>
+      </div>
+      <div class="settings-row">
+        <label>Densidade</label>
+        <div class="toggle-group">
+          <button id="densityComfyBtn" class="active" onclick="setDensity('comfortable')">Confortável</button>
+          <button id="densityCompactBtn" onclick="setDensity('compact')">Compacta</button>
+        </div>
+      </div>
+      <div class="settings-row">
+        <label>Linhas de caderno</label>
+        <div class="toggle-group">
+          <button id="linesOnBtn" class="active" onclick="setLines(true)">Com linhas</button>
+          <button id="linesOffBtn" onclick="setLines(false)">Sem linhas</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="about-block">
+    <div class="about-title">Pontos de restauração</div>
+    <div class="about-text">Salve o status geral atual (tudo: assuntos, itens, progresso) com um nome, e volte a ele quando quiser.</div>
+    <div class="backup-row">
+      <button class="backup-btn" onclick="saveSnapshot()">💾 Salvar status atual</button>
+    </div>
+    <div id="snapshotList" style="margin-top:12px;"></div>
+  </div>
+
+  <div class="about-block">
+    <div class="about-title">Backup e transferência entre dispositivos</div>
+    <div class="about-text">
+      Os dados ficam salvos neste navegador/aparelho. Para levar suas anotações para
+      outro computador ou celular, exporte um arquivo de backup aqui e importe-o no outro aparelho.
+    </div>
+    <div class="backup-row">
+      <button class="backup-btn" onclick="exportData()">⬇ Exportar backup</button>
+      <button class="backup-btn secondary" onclick="document.getElementById('importFile').click()">⬆ Importar backup</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
+    </div>
+    <div class="storage-note" id="storageNote"></div>
+  </div>
+</div>
+
+</div>
+
+<button class="pomo-fab" id="pomoFab" onclick="togglePomo()">🍅</button>
+<div class="pomo-panel" id="pomoPanel">
+  <div class="pomo-mode" id="pomoMode">FOCO</div>
+  <div class="pomo-time" id="pomoTime">25:00</div>
+  <div class="pomo-controls">
+    <button class="primary" id="pomoStart" onclick="pomoToggle()">Iniciar</button>
+    <button onclick="pomoReset()">Reiniciar</button>
+  </div>
+  <div class="pomo-settings">
+    Foco <input type="number" id="pomoWorkMin" value="25" min="1" max="90" onchange="pomoSettingsChanged()">
+    Pausa <input type="number" id="pomoBreakMin" value="5" min="1" max="30" onchange="pomoSettingsChanged()">
+  </div>
+  <div class="pomo-count" id="pomoCount">0 ciclos hoje</div>
+</div>
+
+<script>
+/* ---------- Storage abstraction: works inside Claude.ai (window.storage) and standalone (localStorage, e.g. GitHub Pages) ---------- */
+const hasClaudeStorage = (typeof window.storage !== 'undefined' && window.storage && typeof window.storage.get === 'function');
+
+async function storageGet(key) {
+  if (hasClaudeStorage) {
+    try { const r = await window.storage.get(key); return r ? r.value : null; }
+    catch (e) { return null; }
+  }
+  try { return localStorage.getItem(key); } catch (e) { return null; }
+}
+async function storageSet(key, value) {
+  if (hasClaudeStorage) {
+    try { await window.storage.set(key, value); return true; }
+    catch (e) { return false; }
+  }
+  try { localStorage.setItem(key, value); return true; } catch (e) { return false; }
+}
+
+let data = { sections: [] };
+let settings = { accent: '#8A5A3B', font: 'serif', theme: 'light', density: 'comfortable', fontSize: 'medium', paperLines: true, appName: 'Anotações', icon: '📓' };
+let activeFilter = null;
+let searchTerm = '';
+const STORAGE_KEY = 'anotacoes-data';
+const SETTINGS_KEY = 'anotacoes-settings';
+const POMO_HISTORY_KEY = 'anotacoes-pomo-history';
+const SNAPSHOTS_KEY = 'anotacoes-snapshots';
+const ACCENT_SWATCHES = ['#8A5A3B','#4A6B8A','#7A8B6F','#B5533C','#6B4A8A','#3A7D7D'];
+
+function uid() { return Math.random().toString(36).slice(2, 9); }
+function nowIso() { return new Date().toISOString(); }
+function dateKey(iso) { return new Date(iso).toISOString().slice(0,10); }
+function fmtDate(dstr) {
+  const d = new Date(dstr + 'T00:00:00');
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', weekday: 'short' });
+}
+function fmtShort(iso) {
+  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+}
+function fmtTime(iso) {
+  return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+function daysSince(iso) {
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+}
+
+/* ---------- Tabs ---------- */
+function switchTab(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelector(`.tab-btn[data-tab="${id}"]`).classList.add('active');
+  if (id === 'chartsView') renderCharts();
+  if (id === 'historyView') renderHistory();
+  if (id === 'archiveView') renderArchiveTab();
+  if (id === 'aboutView') renderSnapshots();
+}
+
+/* ---------- Link parsing ---------- */
+function extractLinks(text) {
+  const links = [];
+  const re = /\[\[([^\]]+)\]\]|#([^\s#]+)/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const val = (m[1] || m[2]).trim();
+    if (val) links.push(val);
+  }
+  return links;
+}
+function renderTextWithLinks(text) {
+  const escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return escaped.replace(/\[\[([^\]]+)\]\]|#([^\s#]+)/g, (match, p1, p2) => {
+    const val = (p1 || p2).trim();
+    return `<span class="link-tag" onclick="filterByLink('${val.replace(/'/g,"\\'")}')">${p1 ? val : '#' + val}</span>`;
+  });
+}
+function collectAllLinks() {
+  const counts = {};
+  data.sections.filter(s => !s.archived).forEach(s => {
+    extractLinks(s.title || '').forEach(l => counts[l] = (counts[l]||0)+1);
+    s.items.forEach(i => extractLinks(i.text || '').forEach(l => counts[l] = (counts[l]||0)+1));
+  });
+  return counts;
+}
+
+/* ---------- Load / Save ---------- */
+async function load() {
+  const raw = await storageGet(STORAGE_KEY);
+  if (raw) { try { data = JSON.parse(raw); } catch(e) {} }
+  if (!data.sections || data.sections.length === 0) {
+    const t = nowIso();
+    data.sections = [
+      { id: uid(), title: 'Cartas de anuência NR10', createdAt: t, collapsed: false, items: [
+        { id: uid(), text: '[[Renivaldo]]', done: false, createdAt: t, completedAt: null }
+      ]},
+      { id: uid(), title: 'AVETTA', createdAt: t, collapsed: false, items: [
+        { id: uid(), text: 'Levantar pendências e documentar', done: false, createdAt: t, completedAt: null },
+        { id: uid(), text: 'Agendar reunião', done: false, createdAt: t, completedAt: null },
+        { id: uid(), text: 'Enviar email p/ corporativo', done: false, createdAt: t, completedAt: null }
+      ]}
+    ];
+  }
+  data.sections.forEach(s => {
+    if (!s.createdAt) s.createdAt = nowIso();
+    if (s.collapsed === undefined) s.collapsed = false;
+    s.items.forEach(i => {
+      if (!i.createdAt) i.createdAt = s.createdAt;
+      if (i.completedAt === undefined) i.completedAt = null;
+      if (!i.done) i.completedAt = i.completedAt || null;
+    });
+  });
+  render();
+
+  const settingsRaw = await storageGet(SETTINGS_KEY);
+  if (settingsRaw) { try { settings = Object.assign(settings, JSON.parse(settingsRaw)); } catch(e) {} }
+  applySettings();
+
+  document.getElementById('storageNote').textContent = hasClaudeStorage
+    ? 'Rodando dentro do Claude: os dados ficam salvos na sua conta.'
+    : 'Rodando fora do Claude (ex: GitHub Pages): os dados ficam salvos apenas neste navegador. Use exportar/importar para levar para outro aparelho.';
+}
+
+async function save() {
+  setStatus('salvando...');
+  const ok = await storageSet(STORAGE_KEY, JSON.stringify(data));
+  setStatus(ok ? 'salvo ✓' : 'erro ao salvar');
+  if (ok) setTimeout(() => setStatus(''), 1200);
+}
+function setStatus(msg) { const el = document.getElementById('status'); if (el) el.textContent = msg; }
+
+/* ---------- CRUD ---------- */
+function addSection() {
+  data.sections.push({ id: uid(), title: '', createdAt: nowIso(), collapsed: false, items: [{ id: uid(), text: '', done: false, createdAt: nowIso(), completedAt: null }] });
+  render(); save();
+}
+function delSection(sid) {
+  data.sections = data.sections.filter(s => s.id !== sid);
+  render(); save();
+}
+function archiveSection(sid) {
+  const s = data.sections.find(s => s.id === sid);
+  s.archived = true;
+  s.archivedAt = nowIso();
+  render(); save();
+}
+function unarchiveSection(sid) {
+  const s = data.sections.find(s => s.id === sid);
+  s.archived = false;
+  s.archivedAt = null;
+  render(); save(); renderArchiveTab();
+}
+function deleteArchivedForever(sid) {
+  if (!confirm('Excluir este assunto arquivado definitivamente? Essa ação não pode ser desfeita.')) return;
+  data.sections = data.sections.filter(s => s.id !== sid);
+  save(); renderArchiveTab();
+}
+function renderArchiveTab() {
+  const list = document.getElementById('archiveList');
+  const archived = data.sections.filter(s => s.archived);
+  if (archived.length === 0) {
+    list.innerHTML = '<div class="empty-note">Nenhum assunto arquivado.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  archived.forEach(s => {
+    const done = s.items.filter(i=>i.done).length;
+    const card = document.createElement('div');
+    card.className = 'archived-card';
+    card.innerHTML = `
+      <div class="archived-info">
+        <div class="archived-title">${s.title || 'sem título'}</div>
+        <div class="archived-meta">Arquivado em ${fmtShort(s.archivedAt)} · ${done}/${s.items.length} concluídos</div>
+      </div>
+      <div class="archived-actions">
+        <button onclick="unarchiveSection('${s.id}')">Desarquivar</button>
+        <button class="danger" onclick="deleteArchivedForever('${s.id}')">Excluir</button>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+}
+function toggleCollapse(sid) {
+  const s = data.sections.find(s => s.id === sid);
+  s.collapsed = !s.collapsed;
+  render(); save();
+}
+function addItem(sid) {
+  const s = data.sections.find(s => s.id === sid);
+  s.items.push({ id: uid(), text: '', done: false, createdAt: nowIso(), completedAt: null });
+  render(); save();
+}
+function delItem(sid, iid) {
+  const s = data.sections.find(s => s.id === sid);
+  s.items = s.items.filter(i => i.id !== iid);
+  render(); save();
+}
+function updateTitle(sid, val) {
+  const s = data.sections.find(s => s.id === sid);
+  s.title = val;
+  save();
+  refreshExploreBar();
+}
+function updateItemText(sid, iid, val) {
+  const s = data.sections.find(s => s.id === sid);
+  const i = s.items.find(i => i.id === iid);
+  i.text = val;
+  save();
+}
+function toggleItem(sid, iid) {
+  const s = data.sections.find(s => s.id === sid);
+  const i = s.items.find(i => i.id === iid);
+  i.done = !i.done;
+  i.completedAt = i.done ? nowIso() : null;
+  render(); save();
+}
+function moveItem(sid, iid, dir) {
+  const s = data.sections.find(s => s.id === sid);
+  const idx = s.items.findIndex(i => i.id === iid);
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= s.items.length) return;
+  const [it] = s.items.splice(idx, 1);
+  s.items.splice(newIdx, 0, it);
+  render(); save();
+}
+
+/* ---------- Drag reorder ---------- */
+let dragState = null;
+function onDragStart(e, sid, iid) {
+  dragState = { sid, iid };
+  e.currentTarget.classList.add('dragging');
+}
+function onDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.item-row.drag-over').forEach(el => el.classList.remove('drag-over'));
+}
+function onDragOver(e, sid) {
+  if (!dragState || dragState.sid !== sid) return;
+  e.preventDefault();
+  e.currentTarget.classList.add('drag-over');
+}
+function onDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+function onDrop(e, sid, targetIid) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if (!dragState || dragState.sid !== sid || dragState.iid === targetIid) return;
+  const s = data.sections.find(s => s.id === sid);
+  const fromIdx = s.items.findIndex(i => i.id === dragState.iid);
+  const toIdx = s.items.findIndex(i => i.id === targetIid);
+  const [moved] = s.items.splice(fromIdx, 1);
+  s.items.splice(toIdx, 0, moved);
+  dragState = null;
+  render(); save();
+}
+
+/* ---------- Explore / filter ---------- */
+function filterByLink(val) {
+  activeFilter = { type: 'link', value: val.toLowerCase() };
+  searchTerm = '';
+  document.getElementById('searchInput').value = '';
+  switchTab('notesView');
+  applyFilters(); refreshExploreBar();
+}
+function filterBySection(sid, title) {
+  activeFilter = { type: 'section', value: sid, label: title || 'sem título' };
+  searchTerm = '';
+  document.getElementById('searchInput').value = '';
+  switchTab('notesView');
+  applyFilters(); refreshExploreBar();
+}
+function clearFilter() { activeFilter = null; applyFilters(); refreshExploreBar(); }
+function clearSearch() { searchTerm = ''; document.getElementById('searchInput').value = ''; applyFilters(); }
+function onSearch() {
+  searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+  if (searchTerm) activeFilter = null;
+  applyFilters(); refreshExploreBar();
+}
+function refreshExploreBar() {
+  const bar = document.getElementById('exploreBar');
+  const counts = collectAllLinks();
+  const keys = Object.keys(counts).sort((a,b) => counts[b]-counts[a]);
+  bar.innerHTML = '';
+  keys.forEach(k => {
+    const chip = document.createElement('span');
+    chip.className = 'chip' + (activeFilter && activeFilter.value === k.toLowerCase() ? ' active' : '');
+    chip.textContent = `${k} (${counts[k]})`;
+    chip.onclick = () => filterByLink(k);
+    bar.appendChild(chip);
+  });
+  document.getElementById('clearSearch').style.display = searchTerm ? 'inline' : 'none';
+  const banner = document.getElementById('filterBanner');
+  if (activeFilter) {
+    banner.style.display = 'flex';
+    document.getElementById('filterLabel').textContent = activeFilter.type === 'section'
+      ? `Mostrando o assunto "${activeFilter.label}"`
+      : `Mostrando tudo relacionado a "${activeFilter.value}"`;
+  } else banner.style.display = 'none';
+}
+function sectionMatches(s) {
+  if (activeFilter && activeFilter.type === 'section') return s.id === activeFilter.value;
+  if (activeFilter) {
+    const inTitle = extractLinks(s.title||'').some(l => l.toLowerCase() === activeFilter.value);
+    const inItems = s.items.some(i => extractLinks(i.text||'').some(l => l.toLowerCase() === activeFilter.value));
+    return inTitle || inItems;
+  }
+  if (searchTerm) {
+    const inTitle = (s.title||'').toLowerCase().includes(searchTerm);
+    const inItems = s.items.some(i => (i.text||'').toLowerCase().includes(searchTerm));
+    return inTitle || inItems;
+  }
+  return true;
+}
+function itemMatches(i) {
+  if (activeFilter && activeFilter.type === 'section') return true;
+  if (activeFilter) return extractLinks(i.text||'').some(l => l.toLowerCase() === activeFilter.value);
+  if (searchTerm) return (i.text||'').toLowerCase().includes(searchTerm);
+  return true;
+}
+function applyFilters() {
+  document.querySelectorAll('.section-wrap').forEach(wrap => {
+    const el = wrap.querySelector('.section');
+    const sid = el.dataset.sid;
+    const s = data.sections.find(s => s.id === sid);
+    const secMatch = sectionMatches(s);
+    wrap.classList.toggle('hidden', (activeFilter || searchTerm) && !secMatch);
+    el.querySelectorAll('.item-row').forEach(row => {
+      const iid = row.dataset.iid;
+      const item = s.items.find(i => i.id === iid);
+      const titleHit = searchTerm && (s.title||'').toLowerCase().includes(searchTerm);
+      const match = (!activeFilter && !searchTerm) || itemMatches(item) || titleHit;
+      row.classList.toggle('item-hidden', (activeFilter || searchTerm) && !match);
+    });
+  });
+  refreshExploreBar();
+}
+
+/* ---------- Smart suggestions ---------- */
+function renderSuggestions() {
+  const box = document.getElementById('suggestionsBox');
+  const tips = [];
+  const activeSections = data.sections.filter(s => !s.archived);
+
+  // Stale sections: pending items, created 7+ days ago, no items done
+  activeSections.forEach(s => {
+    if (s.items.length === 0) return;
+    const anyDone = s.items.some(i => i.done);
+    const age = daysSince(s.createdAt);
+    if (!anyDone && age >= 7) {
+      tips.push(`📌 <b>"${s.title || 'sem título'}"</b> está sem nenhum progresso há ${age} dias — talvez precise de atenção ou de ser dividido em passos menores.`);
+    }
+  });
+
+  // Stale individual items
+  const staleItems = [];
+  activeSections.forEach(s => s.items.forEach(i => {
+    if (!i.done && i.text && daysSince(i.createdAt) >= 7) staleItems.push({ text: i.text, days: daysSince(i.createdAt), section: s.title });
+  }));
+  if (staleItems.length >= 3) {
+    tips.push(`⏳ Você tem ${staleItems.length} itens parados há mais de uma semana. Considere revisar ou arquivar os que não são mais prioridade.`);
+  } else {
+    staleItems.slice(0,2).forEach(si => {
+      tips.push(`⏳ "${si.text.replace(/\[\[|\]\]/g,'')}" (em ${si.section}) está pendente há ${si.days} dias.`);
+    });
+  }
+
+  // People/tags with many pending mentions
+  const pendingLinkCounts = {};
+  activeSections.forEach(s => s.items.forEach(i => {
+    if (!i.done) extractLinks(i.text||'').forEach(l => pendingLinkCounts[l] = (pendingLinkCounts[l]||0)+1);
+  }));
+  Object.entries(pendingLinkCounts).sort((a,b)=>b[1]-a[1]).slice(0,1).forEach(([name,count]) => {
+    if (count >= 3) tips.push(`👤 <b>${name}</b> aparece em ${count} pendências diferentes — pode valer uma conversa direta pra resolver tudo de uma vez.`);
+  });
+
+  // Sections with everything done - suggest archiving/closing
+  activeSections.forEach(s => {
+    if (s.items.length > 0 && s.items.every(i => i.done)) {
+      tips.push(`✅ <b>"${s.title || 'sem título'}"</b> está 100% concluído — <span class="link-tag" onclick="archiveSection('${s.id}')">arquivar agora</span>`);
+    }
+  });
+
+  // Pomodoro nudge
+  const totalPending = activeSections.reduce((acc,s) => acc + s.items.filter(i=>!i.done).length, 0);
+  if (totalPending >= 3 && pomoCyclesToday === 0) {
+    tips.push(`🍅 Você tem ${totalPending} itens pendentes e ainda não fez nenhum ciclo de foco hoje. Que tal começar um pomodoro?`);
+  }
+
+  if (tips.length === 0) {
+    box.innerHTML = `<div class="suggestions-title">💡 Sugestões</div><div class="suggestion-empty">Tudo em dia — nenhuma sugestão no momento.</div>`;
+  } else {
+    box.innerHTML = `<div class="suggestions-title">💡 Sugestões</div>` +
+      tips.slice(0,4).map(t => `<div class="suggestion-item">${t}</div>`).join('');
+  }
+}
+
+/* ---------- Render Notes ---------- */
+let editingItemId = null;
+function render() {
+  const container = document.getElementById('sections');
+  container.innerHTML = '';
+  data.sections.filter(s => !s.archived).forEach(s => {
+    const wrap = document.createElement('div');
+    wrap.className = 'section-wrap';
+
+    const dateLabel = document.createElement('div');
+    dateLabel.className = 'section-date';
+    dateLabel.textContent = `Criado em ${fmtShort(s.createdAt)}`;
+    wrap.appendChild(dateLabel);
+
+    const sec = document.createElement('div');
+    sec.className = 'section';
+    sec.dataset.sid = s.id;
+
+    const header = document.createElement('div');
+    header.className = 'section-header';
+
+    const collapseBtn = document.createElement('button');
+    collapseBtn.className = 'collapse-btn';
+    collapseBtn.textContent = s.collapsed ? '▸' : '▾';
+    collapseBtn.onclick = () => toggleCollapse(s.id);
+
+    const titleInput = document.createElement('input');
+    titleInput.className = 'section-title';
+    titleInput.placeholder = 'Nome do assunto';
+    titleInput.value = s.title;
+    titleInput.oninput = (e) => updateTitle(s.id, e.target.value);
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'del-section';
+    delBtn.textContent = '✕';
+    delBtn.onclick = () => delSection(s.id);
+
+    const archBtn = document.createElement('button');
+    archBtn.className = 'archive-btn';
+    archBtn.textContent = '📦';
+    archBtn.title = 'Arquivar assunto';
+    archBtn.onclick = () => archiveSection(s.id);
+
+    header.appendChild(collapseBtn);
+    header.appendChild(titleInput);
+    header.appendChild(archBtn);
+    header.appendChild(delBtn);
+    sec.appendChild(header);
+
+    const body = document.createElement('div');
+    body.className = 'section-body' + (s.collapsed ? ' collapsed' : '');
+
+    s.items.forEach((i, idx) => {
+      const row = document.createElement('div');
+      row.className = 'item-row' + (i.done ? ' checked' : '');
+      row.dataset.iid = i.id;
+      row.draggable = true;
+      row.ondragstart = (e) => onDragStart(e, s.id, i.id);
+      row.ondragend = onDragEnd;
+      row.ondragover = (e) => onDragOver(e, s.id);
+      row.ondragleave = onDragLeave;
+      row.ondrop = (e) => onDrop(e, s.id, i.id);
+
+      const handle = document.createElement('span');
+      handle.className = 'drag-handle';
+      handle.textContent = '⠿';
+
+      const moveBtns = document.createElement('div');
+      moveBtns.className = 'move-btns';
+      const upBtn = document.createElement('button');
+      upBtn.textContent = '▲';
+      upBtn.onclick = () => moveItem(s.id, i.id, -1);
+      const downBtn = document.createElement('button');
+      downBtn.textContent = '▼';
+      downBtn.onclick = () => moveItem(s.id, i.id, 1);
+      moveBtns.appendChild(upBtn);
+      moveBtns.appendChild(downBtn);
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = i.done;
+      cb.onchange = () => toggleItem(s.id, i.id);
+
+      const wrapTxt = document.createElement('div');
+      wrapTxt.className = 'item-text-wrap';
+      const hasLinks = /\[\[[^\]]+\]\]|#[^\s#]+/.test(i.text || '');
+      if (hasLinks && editingItemId !== i.id) {
+        const disp = document.createElement('div');
+        disp.className = 'item-display';
+        disp.innerHTML = renderTextWithLinks(i.text || '') || '<span style="color:var(--ink-soft)">item...</span>';
+        disp.onclick = (e) => {
+          if (e.target.classList.contains('link-tag')) return;
+          editingItemId = i.id;
+          render(); applyFilters();
+          const inp = document.querySelector(`[data-iid="${i.id}"] .item-text`);
+          if (inp) inp.focus();
+        };
+        wrapTxt.appendChild(disp);
+      } else {
+        const text = document.createElement('input');
+        text.className = 'item-text';
+        text.placeholder = 'item... use [[Nome]] ou #tag para linkar';
+        text.value = i.text;
+        text.oninput = (e) => updateItemText(s.id, i.id, e.target.value);
+        text.onblur = () => { editingItemId = null; render(); applyFilters(); };
+        wrapTxt.appendChild(text);
+      }
+      const dateSpan = document.createElement('span');
+      dateSpan.className = 'item-date';
+      dateSpan.textContent = `(${fmtShort(i.createdAt)})`;
+      wrapTxt.appendChild(dateSpan);
+
+      const delItemBtn = document.createElement('button');
+      delItemBtn.className = 'del-item';
+      delItemBtn.textContent = '✕';
+      delItemBtn.onclick = () => delItem(s.id, i.id);
+
+      row.appendChild(handle);
+      row.appendChild(moveBtns);
+      row.appendChild(cb);
+      row.appendChild(wrapTxt);
+      row.appendChild(delItemBtn);
+      body.appendChild(row);
+    });
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-item';
+    addBtn.textContent = '+ item';
+    addBtn.onclick = () => addItem(s.id);
+    body.appendChild(addBtn);
+
+    sec.appendChild(body);
+    wrap.appendChild(sec);
+    container.appendChild(wrap);
+  });
+  applyFilters();
+  renderSuggestions();
+}
+
+/* ---------- Charts ---------- */
+function last7Days() {
+  const days = [];
+  for (let k = 6; k >= 0; k--) {
+    const d = new Date();
+    d.setDate(d.getDate() - k);
+    days.push(d.toISOString().slice(0,10));
+  }
+  return days;
+}
+function renderCharts() {
+  let total = 0, done = 0;
+  data.sections.forEach(s => s.items.forEach(i => { total++; if (i.done) done++; }));
+  const pending = total - done;
+  const pct = total ? Math.round((done/total)*100) : 0;
+
+  document.getElementById('statCards').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">itens totais</div></div>
+    <div class="stat-card"><div class="stat-num">${done}</div><div class="stat-label">concluídos</div></div>
+    <div class="stat-card"><div class="stat-num">${pending}</div><div class="stat-label">pendentes</div></div>
+    <div class="stat-card"><div class="stat-num">${pct}%</div><div class="stat-label">progresso</div></div>
+  `;
+
+  const hbars = document.getElementById('hbars');
+  const activeSections = data.sections.filter(s => !s.archived);
+  if (activeSections.length === 0) {
+    hbars.innerHTML = '<div class="empty-note">Nenhum assunto ativo.</div>';
+  } else {
+    hbars.innerHTML = '';
+    activeSections.forEach(s => {
+      const t = s.items.length;
+      const d = s.items.filter(i => i.done).length;
+      const p = t ? Math.round((d/t)*100) : 0;
+      const donePct = t ? (d/t)*100 : 0;
+      const pendPct = 100 - donePct;
+      const row = document.createElement('div');
+      row.className = 'hbar-row clickable';
+      row.onclick = () => filterBySection(s.id, s.title);
+      row.innerHTML = `
+        <div class="hbar-label">${(s.title || 'sem título')}</div>
+        <div class="hbar-track">
+          <div class="hbar-done" style="width:${donePct}%"></div>
+          <div class="hbar-pending" style="width:${pendPct}%"></div>
+        </div>
+        <div class="hbar-pct">${p}%</div>
+      `;
+      hbars.appendChild(row);
+    });
+  }
+
+  // Assuntos parados
+  const staleEl = document.getElementById('staleList');
+  const staleSections = activeSections
+    .filter(s => s.items.length > 0 && !s.items.some(i => i.done))
+    .map(s => ({ s, days: daysSince(s.createdAt) }))
+    .filter(x => x.days >= 1)
+    .sort((a,b) => b.days - a.days);
+  if (staleSections.length === 0) {
+    staleEl.innerHTML = '<div class="empty-note">Nenhum assunto parado no momento.</div>';
+  } else {
+    staleEl.innerHTML = '';
+    staleSections.slice(0,6).forEach(x => {
+      const row = document.createElement('div');
+      row.className = 'stale-row';
+      row.onclick = () => filterBySection(x.s.id, x.s.title);
+      row.innerHTML = `<span class="stale-title">${x.s.title || 'sem título'}</span><span class="stale-badge">${x.days}d parado</span>`;
+      staleEl.appendChild(row);
+    });
+  }
+
+  // Mais mencionados em pendências
+  const mentionsEl = document.getElementById('mentionsChart');
+  const pendingCounts = {};
+  activeSections.forEach(s => s.items.forEach(i => {
+    if (!i.done) extractLinks(i.text||'').forEach(l => pendingCounts[l] = (pendingCounts[l]||0)+1);
+  }));
+  const mentionKeys = Object.keys(pendingCounts).sort((a,b)=>pendingCounts[b]-pendingCounts[a]).slice(0,6);
+  if (mentionKeys.length === 0) {
+    mentionsEl.innerHTML = '<div class="empty-note">Nenhuma menção [[link]] ou #tag em pendências ainda.</div>';
+  } else {
+    const maxM = Math.max(...mentionKeys.map(k => pendingCounts[k]));
+    mentionsEl.innerHTML = '';
+    mentionKeys.forEach(k => {
+      const pctW = (pendingCounts[k]/maxM)*100;
+      const row = document.createElement('div');
+      row.className = 'hbar-row clickable';
+      row.onclick = () => filterByLink(k);
+      row.innerHTML = `
+        <div class="hbar-label">${k}</div>
+        <div class="hbar-track"><div class="hbar-done" style="width:${pctW}%"></div></div>
+        <div class="hbar-pct">${pendingCounts[k]}</div>
+      `;
+      mentionsEl.appendChild(row);
+    });
+  }
+
+  const days = last7Days();
+  const createdByDay = {}, completedByDay = {};
+  days.forEach(d => { createdByDay[d] = 0; completedByDay[d] = 0; });
+  data.sections.forEach(s => {
+    s.items.forEach(i => {
+      const ck = dateKey(i.createdAt);
+      if (createdByDay[ck] !== undefined) createdByDay[ck]++;
+      if (i.completedAt) {
+        const dk = dateKey(i.completedAt);
+        if (completedByDay[dk] !== undefined) completedByDay[dk]++;
+      }
+    });
+  });
+  const maxVal = Math.max(1, ...days.map(d => Math.max(createdByDay[d], completedByDay[d])));
+  const actEl = document.getElementById('activityChart');
+  actEl.innerHTML = '';
+  days.forEach(d => {
+    const c = createdByDay[d], k = completedByDay[d];
+    const col = document.createElement('div');
+    col.className = 'vbar-col';
+    const stackH = 90;
+    col.innerHTML = `
+      <div class="vbar-stack" style="height:${stackH}px; justify-content:flex-end;">
+        <div class="vbar-created" style="height:${(c/maxVal)*stackH}px" title="${c} criados"></div>
+        <div class="vbar-completed" style="height:${(k/maxVal)*stackH}px" title="${k} concluídos"></div>
+      </div>
+      <div class="vbar-day">${fmtShort(d+'T00:00:00')}</div>
+    `;
+    actEl.appendChild(col);
+  });
+
+  renderPomoChart(days);
+}
+async function renderPomoChart(days) {
+  let history = {};
+  const raw = await storageGet(POMO_HISTORY_KEY);
+  if (raw) { try { history = JSON.parse(raw); } catch(e) {} }
+  const maxVal = Math.max(1, ...days.map(d => history[d] || 0));
+  const el = document.getElementById('pomoChart');
+  el.innerHTML = '';
+  days.forEach(d => {
+    const v = history[d] || 0;
+    const col = document.createElement('div');
+    col.className = 'vbar-col';
+    const stackH = 90;
+    col.innerHTML = `
+      <div class="vbar-stack" style="height:${stackH}px; justify-content:flex-end;">
+        <div class="vbar-completed" style="height:${(v/maxVal)*stackH}px" title="${v} ciclos"></div>
+      </div>
+      <div class="vbar-day">${fmtShort(d+'T00:00:00')}</div>
+    `;
+    el.appendChild(col);
+  });
+}
+
+/* ---------- Decision-support insights ---------- */
+function computeInsights() {
+  const lines = [];
+  let total = 0, done = 0;
+  data.sections.forEach(s => s.items.forEach(i => { total++; if (i.done) done++; }));
+  const pending = total - done;
+  lines.push(`${data.sections.length} assunto(s) em acompanhamento, ${pending} item(ns) pendente(s) de ${total} no total (${total?Math.round(done/total*100):0}% concluído).`);
+
+  const days7 = last7Days();
+  const prevKeys = []; for (let k=13;k>=7;k--){ const d=new Date(); d.setDate(d.getDate()-k); prevKeys.push(d.toISOString().slice(0,10)); }
+  const countCompletedIn = (keys) => {
+    let c = 0;
+    data.sections.forEach(s => s.items.forEach(i => { if (i.completedAt && keys.includes(dateKey(i.completedAt))) c++; }));
+    return c;
+  };
+  const thisWeek = countCompletedIn(days7), lastWeek = countCompletedIn(prevKeys);
+  if (thisWeek !== lastWeek) {
+    const trend = thisWeek > lastWeek ? 'acima' : 'abaixo';
+    lines.push(`Ritmo de conclusão esta semana: ${thisWeek} item(ns), ${trend} da semana anterior (${lastWeek}).`);
+  } else {
+    lines.push(`Ritmo estável: ${thisWeek} item(ns) concluído(s) esta semana, igual à semana anterior.`);
+  }
+
+  const staleSections = data.sections
+    .filter(s => s.items.length > 0 && !s.items.some(i => i.done))
+    .map(s => ({ title: s.title || 'sem título', days: daysSince(s.createdAt) }))
+    .filter(x => x.days >= 5)
+    .sort((a,b) => b.days - a.days);
+  if (staleSections.length > 0) {
+    const top = staleSections.slice(0,3).map(x => `"${x.title}" (${x.days}d)`).join(', ');
+    lines.push(`⚠ Assuntos sem nenhum progresso: ${top}${staleSections.length>3?` e mais ${staleSections.length-3}`:''}.`);
+  }
+
+  const pendingCounts = {};
+  data.sections.forEach(s => s.items.forEach(i => { if (!i.done) extractLinks(i.text||'').forEach(l => pendingCounts[l]=(pendingCounts[l]||0)+1); }));
+  const topMention = Object.entries(pendingCounts).sort((a,b)=>b[1]-a[1])[0];
+  if (topMention && topMention[1] >= 2) lines.push(`Maior concentração de pendências envolve "${topMention[0]}" (${topMention[1]} itens).`);
+
+  const doneSections = data.sections.filter(s => !s.archived && s.items.length > 0 && s.items.every(i => i.done));
+  if (doneSections.length > 0) lines.push(`${doneSections.length} assunto(s) 100% concluído(s), candidato(s) a arquivar: ${doneSections.map(s=>`"${s.title||'sem título'}"`).join(', ')}.`);
+
+  return lines;
+}
+
+function renderHistoryInsights() {
+  const lines = computeInsights();
+  const box = document.getElementById('insightBox');
+  box.innerHTML = `<div class="insight-title">🧠 Resumo para tomada de decisão</div>` +
+    lines.map(l => `<div class="insight-item">${l}</div>`).join('') +
+    `<button class="copilot-btn" onclick="copyForCopilot()">📋 Copiar resumo completo para o Copilot</button>`;
+}
+
+function copyForCopilot() {
+  let text = `Resumo de anotações de trabalho — gerado em ${new Date().toLocaleString('pt-BR')}\n\n`;
+  text += computeInsights().map(l => '- ' + l.replace(/⚠\s?/,'')).join('\n') + '\n\n';
+  text += `--- Detalhe por assunto ---\n`;
+  data.sections.forEach(s => {
+    text += `\n${s.title || 'sem título'} (criado em ${fmtShort(s.createdAt)}):\n`;
+    s.items.forEach(i => {
+      if (!i.text) return;
+      text += `  [${i.done ? 'x' : ' '}] ${i.text} (${fmtShort(i.createdAt)}${i.completedAt ? ', concluído ' + fmtShort(i.completedAt) : ''})\n`;
+    });
+  });
+  text += `\n---\nCom base nessas anotações de obra/trabalho, me dê um resumo executivo: principais riscos, prioridades da semana e sugestões de próximos passos.`;
+
+  const done = () => { alert('Resumo copiado! Cole no Copilot Chat.'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+function fallbackCopy(text, cb) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); cb(); } catch (e) { alert('Não foi possível copiar automaticamente. Selecione e copie manualmente:\n\n' + text); }
+  document.body.removeChild(ta);
+}
+
+/* ---------- History ---------- */
+function renderHistory() {
+  renderHistoryInsights();
+  const events = [];
+  data.sections.forEach(s => {
+    events.push({ date: s.createdAt, type: 'created', text: `Assunto criado: "${s.title || 'sem título'}"`, section: s.title });
+    s.items.forEach(i => {
+      if (!i.text) return;
+      events.push({ date: i.createdAt, type: 'created', text: i.text, section: s.title });
+      if (i.completedAt) events.push({ date: i.completedAt, type: 'completed', text: i.text, section: s.title });
+    });
+  });
+  events.sort((a,b) => new Date(b.date) - new Date(a.date));
+
+  const grouped = {};
+  events.forEach(e => {
+    const dk = dateKey(e.date);
+    if (!grouped[dk]) grouped[dk] = [];
+    grouped[dk].push(e);
+  });
+
+  const list = document.getElementById('historyList');
+  const dateKeys = Object.keys(grouped).sort((a,b) => b.localeCompare(a));
+  if (dateKeys.length === 0) {
+    list.innerHTML = '<div class="empty-note">Nenhum evento registrado ainda.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  dateKeys.forEach(dk => {
+    const dayDiv = document.createElement('div');
+    dayDiv.className = 'history-day';
+    const header = document.createElement('div');
+    header.className = 'history-date';
+    header.textContent = fmtDate(dk);
+    dayDiv.appendChild(header);
+    grouped[dk].forEach(e => {
+      const ev = document.createElement('div');
+      ev.className = 'history-event';
+      const verb = e.type === 'created' ? 'Criado' : 'Concluído';
+      ev.innerHTML = `
+        <span class="history-dot ${e.type}"></span>
+        <span class="history-text">${verb}: ${e.text.replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}
+          <span class="history-section-tag">— ${e.section || ''}</span>
+        </span>
+        <span class="history-time">${fmtTime(e.date)}</span>
+      `;
+      dayDiv.appendChild(ev);
+    });
+    list.appendChild(dayDiv);
+  });
+}
+
+/* ---------- Export / Import ---------- */
+async function exportData() {
+  let pomoHistory = {};
+  const raw = await storageGet(POMO_HISTORY_KEY);
+  if (raw) { try { pomoHistory = JSON.parse(raw); } catch(e) {} }
+  const payload = { exportedAt: nowIso(), sections: data.sections, pomoHistory, settings };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `anotacoes-backup-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const payload = JSON.parse(e.target.result);
+      if (!payload.sections) throw new Error('formato inválido');
+      const replace = confirm('Importar vai SUBSTITUIR todas as anotações atuais por este backup. Continuar?');
+      if (!replace) return;
+      data.sections = payload.sections;
+      await save();
+      if (payload.pomoHistory) {
+        await storageSet(POMO_HISTORY_KEY, JSON.stringify(payload.pomoHistory));
+        await loadPomo();
+      }
+      if (payload.settings) {
+        settings = Object.assign(settings, payload.settings);
+        await storageSet(SETTINGS_KEY, JSON.stringify(settings));
+        applySettings();
+      }
+      render();
+      alert('Backup importado com sucesso.');
+    } catch (err) {
+      alert('Não foi possível ler esse arquivo. Verifique se é um backup exportado por este app.');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+/* ---------- Snapshots (pontos de restauração) ---------- */
+async function getSnapshots() {
+  const raw = await storageGet(SNAPSHOTS_KEY);
+  if (!raw) return [];
+  try { return JSON.parse(raw); } catch(e) { return []; }
+}
+async function saveSnapshot() {
+  const label = prompt('Nome para este ponto de restauração (ex: "Status sexta-feira"):');
+  if (label === null) return;
+  const snaps = await getSnapshots();
+  snaps.unshift({ id: uid(), label: label || 'Sem nome', savedAt: nowIso(), sections: JSON.parse(JSON.stringify(data.sections)) });
+  await storageSet(SNAPSHOTS_KEY, JSON.stringify(snaps.slice(0,20)));
+  renderSnapshots();
+}
+async function restoreSnapshot(id) {
+  const snaps = await getSnapshots();
+  const snap = snaps.find(s => s.id === id);
+  if (!snap) return;
+  if (!confirm(`Restaurar "${snap.label}" (${fmtShort(snap.savedAt)})? Isso substitui o estado atual.`)) return;
+  data.sections = JSON.parse(JSON.stringify(snap.sections));
+  await save();
+  render();
+  alert('Status restaurado.');
+}
+async function deleteSnapshot(id) {
+  let snaps = await getSnapshots();
+  snaps = snaps.filter(s => s.id !== id);
+  await storageSet(SNAPSHOTS_KEY, JSON.stringify(snaps));
+  renderSnapshots();
+}
+async function renderSnapshots() {
+  const list = document.getElementById('snapshotList');
+  if (!list) return;
+  const snaps = await getSnapshots();
+  if (snaps.length === 0) {
+    list.innerHTML = '<div class="empty-note">Nenhum ponto de restauração salvo ainda.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  snaps.forEach(s => {
+    const card = document.createElement('div');
+    card.className = 'snapshot-card';
+    card.innerHTML = `
+      <div class="snapshot-info">${s.label}<div class="snapshot-meta">${fmtShort(s.savedAt)} às ${fmtTime(s.savedAt)} · ${s.sections.length} assunto(s)</div></div>
+      <div class="snapshot-actions">
+        <button onclick="restoreSnapshot('${s.id}')">Restaurar</button>
+        <button class="danger" onclick="deleteSnapshot('${s.id}')">Excluir</button>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+/* ---------- Settings / customization ---------- */
+function applySettings() {
+  document.documentElement.style.setProperty('--accent', settings.accent);
+  document.getElementById('accentPicker').value = settings.accent;
+  const swatchRow = document.getElementById('swatchesRow');
+  if (swatchRow && !swatchRow.dataset.built) {
+    swatchRow.dataset.built = '1';
+    ACCENT_SWATCHES.forEach(c => {
+      const sw = document.createElement('div');
+      sw.className = 'swatch';
+      sw.style.background = c;
+      sw.onclick = () => updateAccent(c);
+      sw.dataset.color = c;
+      swatchRow.appendChild(sw);
+    });
+  }
+  document.querySelectorAll('.swatch').forEach(sw => sw.classList.toggle('active', sw.dataset.color === settings.accent));
+
+  document.body.classList.toggle('dark', settings.theme === 'dark');
+  document.getElementById('themeLightBtn').classList.toggle('active', settings.theme === 'light');
+  document.getElementById('themeDarkBtn').classList.toggle('active', settings.theme === 'dark');
+
+  document.documentElement.style.setProperty('--font-body', settings.font === 'sans'
+    ? "'Segoe UI', system-ui, sans-serif" : "Georgia, 'Iowan Old Style', serif");
+  document.getElementById('fontSerifBtn').classList.toggle('active', settings.font === 'serif');
+  document.getElementById('fontSansBtn').classList.toggle('active', settings.font === 'sans');
+
+  document.body.classList.toggle('compact', settings.density === 'compact');
+  document.getElementById('densityComfyBtn').classList.toggle('active', settings.density === 'comfortable');
+  document.getElementById('densityCompactBtn').classList.toggle('active', settings.density === 'compact');
+
+  document.body.classList.remove('fs-small','fs-large');
+  if (settings.fontSize === 'small') document.body.classList.add('fs-small');
+  if (settings.fontSize === 'large') document.body.classList.add('fs-large');
+  ['fsSmallBtn','fsMediumBtn','fsLargeBtn'].forEach(id => document.getElementById(id).classList.remove('active'));
+  document.getElementById(settings.fontSize === 'small' ? 'fsSmallBtn' : settings.fontSize === 'large' ? 'fsLargeBtn' : 'fsMediumBtn').classList.add('active');
+
+  document.getElementById('notesView').classList.toggle('no-lines', !settings.paperLines);
+  document.getElementById('linesOnBtn').classList.toggle('active', settings.paperLines);
+  document.getElementById('linesOffBtn').classList.toggle('active', !settings.paperLines);
+
+  document.querySelector('.page-title').textContent = `${settings.icon} ${settings.appName}`;
+  document.getElementById('appNameInput').value = settings.appName;
+  document.querySelectorAll('#iconPicker button').forEach(b => b.classList.toggle('active', b.dataset.icon === settings.icon));
+  document.title = settings.appName;
+}
+function persistSettings() { storageSet(SETTINGS_KEY, JSON.stringify(settings)); }
+function updateAccent(val) { settings.accent = val; applySettings(); persistSettings(); }
+function setFont(val) { settings.font = val; applySettings(); persistSettings(); }
+function setTheme(val) { settings.theme = val; applySettings(); persistSettings(); }
+function setDensity(val) { settings.density = val; applySettings(); persistSettings(); }
+function setFontSize(val) { settings.fontSize = val; applySettings(); persistSettings(); }
+function setLines(val) { settings.paperLines = val; applySettings(); persistSettings(); }
+function updateAppName(val) { settings.appName = val || 'Anotações'; applySettings(); persistSettings(); }
+function setIcon(val) { settings.icon = val; applySettings(); persistSettings(); }
+
+load();
+
+/* ---------- Pomodoro ---------- */
+let pomoInterval = null;
+let pomoSeconds = 25 * 60;
+let pomoMode = 'work';
+let pomoRunning = false;
+let pomoCyclesToday = 0;
+
+async function loadPomo() {
+  const raw = await storageGet(POMO_HISTORY_KEY);
+  if (raw) {
+    try {
+      const history = JSON.parse(raw);
+      const today = new Date().toISOString().slice(0,10);
+      pomoCyclesToday = history[today] || 0;
+    } catch(e) {}
+  }
+  updatePomoDisplay();
+}
+async function savePomoCycle() {
+  let history = {};
+  const raw = await storageGet(POMO_HISTORY_KEY);
+  if (raw) { try { history = JSON.parse(raw); } catch(e) {} }
+  const today = new Date().toISOString().slice(0,10);
+  history[today] = (history[today] || 0) + 1;
+  await storageSet(POMO_HISTORY_KEY, JSON.stringify(history));
+}
+function togglePomo() { document.getElementById('pomoPanel').classList.toggle('open'); }
+function pomoToggle() {
+  if (pomoRunning) {
+    pomoRunning = false;
+    clearInterval(pomoInterval);
+    document.getElementById('pomoStart').textContent = 'Continuar';
+  } else {
+    pomoRunning = true;
+    document.getElementById('pomoStart').textContent = 'Pausar';
+    pomoInterval = setInterval(pomoTick, 1000);
+  }
+}
+function pomoTick() {
+  pomoSeconds--;
+  if (pomoSeconds <= 0) {
+    pomoBeep();
+    if (pomoMode === 'work') {
+      pomoCyclesToday++;
+      savePomoCycle();
+      pomoMode = 'break';
+      pomoSeconds = getBreakMin() * 60;
+    } else {
+      pomoMode = 'work';
+      pomoSeconds = getWorkMin() * 60;
+    }
+    renderSuggestions();
+  }
+  updatePomoDisplay();
+}
+function pomoReset() {
+  pomoRunning = false;
+  clearInterval(pomoInterval);
+  pomoMode = 'work';
+  pomoSeconds = getWorkMin() * 60;
+  document.getElementById('pomoStart').textContent = 'Iniciar';
+  updatePomoDisplay();
+}
+function pomoSettingsChanged() {
+  if (!pomoRunning) {
+    pomoSeconds = (pomoMode === 'work' ? getWorkMin() : getBreakMin()) * 60;
+    updatePomoDisplay();
+  }
+}
+function getWorkMin() { return parseInt(document.getElementById('pomoWorkMin').value) || 25; }
+function getBreakMin() { return parseInt(document.getElementById('pomoBreakMin').value) || 5; }
+function updatePomoDisplay() {
+  const mm = Math.floor(pomoSeconds / 60).toString().padStart(2,'0');
+  const ss = (pomoSeconds % 60).toString().padStart(2,'0');
+  document.getElementById('pomoTime').textContent = `${mm}:${ss}`;
+  document.getElementById('pomoMode').textContent = pomoMode === 'work' ? 'FOCO' : 'PAUSA';
+  document.getElementById('pomoCount').textContent = `${pomoCyclesToday} ciclo(s) hoje`;
+  document.title = pomoRunning ? `${mm}:${ss} · ${pomoMode==='work'?'Foco':'Pausa'}` : '📓 Anotações';
+}
+function pomoBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = 880;
+    g.gain.setValueAtTime(0.2, ctx.currentTime);
+    o.start();
+    o.stop(ctx.currentTime + 0.4);
+  } catch (e) {}
+}
+loadPomo();
+</script>
+</body>
+</html>
